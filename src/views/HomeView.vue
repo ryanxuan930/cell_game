@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import type { Ref } from 'vue';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
@@ -199,15 +199,20 @@ function initializeMap(randomMap: boolean = false, randomCell: boolean = false) 
     for (let i = 0; i < xAxis.value; i++) {
       for (let j = 0; j < yAxis.value; j++) {
         if (randomMap) {
-          const random = Math.random();
-          if (random < 0.25) {
-            modifyMapElement(mapLayer.value[0].positions[i][j], PositionType.Water);
-          } else if (random < 0.5) {
-            modifyMapElement(mapLayer.value[0].positions[i][j], PositionType.Sand);
-          } else if (random < 0.75) {
-            modifyMapElement(mapLayer.value[0].positions[i][j], PositionType.Rock);
-          } else {
-            modifyMapElement(mapLayer.value[0].positions[i][j], PositionType.Normal);
+          let random = 0;
+          for (let k = 0; k < iterations.value; k++) {
+            if (k % 10 === 0) {
+              random = Math.random();
+            }
+            if (random < 0.1) {
+              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Rock);
+            } else if (random < 0.3) {
+              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Water);
+            } else if (random < 0.7) {
+              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Sand);
+            } else {
+              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Normal);
+            }
           }
         }
         if (randomCell && mapLayer.value[0].positions[i][j].type !== PositionType.Rock) {
@@ -400,21 +405,18 @@ function CalculateEvolution() {
               ) {
               if (neighbours.neighborCount !== 3) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
             } else if (currentCell.content.type === CellType.Predator) {
               if (neighbours.predatorCount > 0) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } 
             } else if (currentCell.content.type === CellType.BigPredator) {
               if (neighbours.predatorCount > 1) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
@@ -425,7 +427,6 @@ function CalculateEvolution() {
               ) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
@@ -440,7 +441,6 @@ function CalculateEvolution() {
               && neighbours.neighborCount < 5
               ) {
               modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.NormalCell);
-              movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
             } else if (
               currentCell.content.type === CellType.NormalCell 
               || currentCell.content.type === CellType.WaterCell 
@@ -449,21 +449,18 @@ function CalculateEvolution() {
               ) {
               if (neighbours.neighborCount !== 2 && neighbours.neighborCount !== 3) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
             } else if (currentCell.content.type === CellType.Predator) {
               if (neighbours.predatorCount > 0) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
             } else if (currentCell.content.type === CellType.BigPredator) {
               if (neighbours.predatorCount > 1) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
@@ -474,7 +471,6 @@ function CalculateEvolution() {
               ) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
@@ -483,11 +479,9 @@ function CalculateEvolution() {
           } else if (currentCell.type === PositionType.Sand) {
             if (currentCell.content.type === CellType.DeadCell && neighbours.neighborCount === 4) {
               modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.NormalCell);
-              movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
             } else if (currentCell.content.type === CellType.NormalCell) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else if (i > 1) {
                 if (
                   mapLayer.value[i].positions[x][y].content.type === CellType.NormalCell
@@ -500,10 +494,8 @@ function CalculateEvolution() {
                     )
                   ) {
                   modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.SandCell);
-                  movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
                 } else {
                   modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                  movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
                 }
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
@@ -511,12 +503,10 @@ function CalculateEvolution() {
             } else if (currentCell.content.type === CellType.WaterCell) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 if (i > 2) {
                   if (mapLayer.value[i].positions[x][y].content.type === CellType.WaterCell && mapLayer.value[i - 1].positions[x][y].content.type === CellType.WaterCell && mapLayer.value[i - 2].positions[x][y].content.type === CellType.WaterCell) {
                     modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                    movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
                   } else {
                     moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
                   }
@@ -527,19 +517,16 @@ function CalculateEvolution() {
             } else if (currentCell.content.type === CellType.SandCell) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
             } else if (currentCell.content.type === CellType.Predator) {
               if (neighbours.predatorCount > 0) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 if (i > 2) {
                   if (mapLayer.value[i].positions[x][y].content.type === CellType.Predator && mapLayer.value[i - 1].positions[x][y].content.type === CellType.Predator && mapLayer.value[i - 2].positions[x][y].content.type === CellType.Predator) {
                     modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                    movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
                   } else {
                     moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
                   }
@@ -550,17 +537,14 @@ function CalculateEvolution() {
             } else if (currentCell.content.type === CellType.BigPredator) {
               if (neighbours.predatorCount > 1) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else if (i > 1 &&currentCell.content.type === CellType.BigPredator && currentCell.content.age >= 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
             } else if (currentCell.content.type === CellType.NormalParasite || currentCell.content.type === CellType.WaterParasite || currentCell.content.type === CellType.SandParasite) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else if (i > 0 
               && (
                 currentCell.content.type === CellType.NormalParasite 
@@ -569,17 +553,14 @@ function CalculateEvolution() {
                 ) && currentCell.content.age > 0
                 ) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
             } else if (currentCell.content.type === CellType.BigCell) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else if (i > 1 && currentCell.content.age > 1) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-                movePositionToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
