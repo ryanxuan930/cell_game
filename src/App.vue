@@ -4,7 +4,10 @@
 </script>
 
 <template>
-  <RouterView />
+  <div class="h-screen w-full overflow-hidden">
+    <RouterView />
+  </div>
 </template>
 
-<style scoped></style>
+<style>
+</style>
