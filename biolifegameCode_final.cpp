@@ -448,6 +448,7 @@ void updateCellStatus(int row,int column,int time){
             position[time+1][row][column]=0;
         }
     }
+}
 void customizePattern() {
     while(1){
         int modeChoice;
