@@ -447,7 +447,7 @@ function CalculateEvolution() {
               || currentCell.content.type === CellType.SandCell 
               || currentCell.content.type === CellType.BigCell
               ) {
-              if (neighbours.neighborCount !== 2 && neighbours.neighborCount !== 3) {
+              if (neighbours.neighborCount < 2 && neighbours.neighborCount > 3) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
@@ -564,6 +564,16 @@ function CalculateEvolution() {
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
+            }
+          }
+          if (
+            currentCell.content.type === CellType.NormalCell 
+            && currentCell.content.age % 3 === 2 
+          ) {
+            if (currentCell.type === PositionType.Normal) {
+              modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.BigCell);
+            } else if (currentCell.type === PositionType.Water) {
+              modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.WaterCell);
             }
           }
           if (
