@@ -17,11 +17,6 @@ const randomCell = ref(false);
 const showModal = ref(false);
 const isLoading = ref(false);
 
-/*
-const elementSize = computed(() => {
-  return String((window.innerHeight - 80) / yAxis.value) + 'px';
-});*/
-
 const elementSize = ref('20px')
 
 enum PositionType {
@@ -970,7 +965,6 @@ hr{
     top:-185px;
     left: -60px;
 }
-
 
 @-webkit-keyframes ray_anim { 
 		0% { -webkit-transform: rotate(0deg); transform: rotate(0deg);}    
