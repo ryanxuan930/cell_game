@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import type { Ref } from 'vue';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
@@ -8,7 +8,7 @@ import Dropdown from 'primevue/dropdown';
 
 const xAxis = ref(16);
 const yAxis = ref(32);
-const iterations = ref(10);
+const iterations = ref(30);
 const currentIteration = ref(0);
 const duration = ref(1);
 let interval: number;
@@ -22,7 +22,7 @@ const elementSize = computed(() => {
   return String((window.innerHeight - 80) / yAxis.value) + 'px';
 });*/
 
-const elementSize = ref('32px')
+const elementSize = ref('20px')
 
 enum PositionType {
   Normal,
@@ -43,6 +43,46 @@ enum CellType {
   BigPredator,
   BigCell,
 }
+
+enum WeatherType {
+  Normal,
+  Rain,
+  Sunlight,
+}
+
+const currentWeather: Ref<WeatherType> = ref(WeatherType.Normal);
+
+const weatherData: Ref<WeatherType[]> = computed(() => {
+  const weather: WeatherType[] = [];
+  const num = Math.ceil(iterations.value / 10);
+  for (let i = 0; i < num; i++) {
+    if (i < 3) {
+      switch (i) {
+        case 0:
+          weather.push(WeatherType.Normal);
+          break;
+        case 1:
+          weather.push(WeatherType.Rain);
+          break;
+        case 2:
+          weather.push(WeatherType.Sunlight);
+          break;
+        default:
+          break;
+      }
+    } else {
+      const random = Math.random();
+      if (random < 0.3) {
+        weather.push(WeatherType.Rain);
+      } else if (random < 0.6) {
+        weather.push(WeatherType.Sunlight);
+      } else {
+        weather.push(WeatherType.Normal);
+      }
+    }
+  }
+  return weather;
+})
 
 const cellTypeList = [
   { label: '無細胞', value: CellType.DeadCell },
@@ -69,6 +109,7 @@ interface ICell {
   y: number;
   type: CellType;
   age: number;
+  resetAge: () => void;
   neighbourStatus: (iteration: number) => {
     neighbours: TPosition[];
     deadCellCount: number;
@@ -109,6 +150,10 @@ class Cell implements ICell {
 
   setDeadCell = () => {
     this.type = CellType.DeadCell;
+    this.age = 0;
+  };
+
+  resetAge = () => {
     this.age = 0;
   };
 
@@ -204,14 +249,49 @@ function initializeMap(randomMap: boolean = false, randomCell: boolean = false) 
             if (k % 10 === 0) {
               random = Math.random();
             }
-            if (random < 0.1) {
-              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Rock);
-            } else if (random < 0.3) {
-              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Water);
-            } else if (random < 0.7) {
-              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Sand);
+            if ( k < 10) {
+              if (random < 0.1) {
+                modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Rock);
+              } else if (random < 0.3) {
+                modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Water);
+              } else if (random < 0.7) {
+                modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Sand);
+              } else {
+                modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Normal);
+              }
             } else {
-              modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Normal);
+              if (mapLayer.value[k-1].positions[i][j].type === PositionType.Rock) {
+                modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Rock);
+              } else {
+                const weatherIndex: number = Math.floor(k / 10);
+                if (weatherData.value[weatherIndex] === WeatherType.Rain) {
+                  if (mapLayer.value[k].positions[i][j].type === PositionType.Sand) {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Normal);
+                  } else {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Water);
+                  }
+                  if (random < 0.1 && mapLayer.value[k].positions[i][j].type === PositionType.Water) {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Sand);
+                  }
+                } else if (weatherData.value[weatherIndex] === WeatherType.Sunlight) {
+                  if (mapLayer.value[k].positions[i][j].type === PositionType.Water) {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Normal);
+                  } else {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Sand);
+                  }
+                  if (random < 0.1 && mapLayer.value[k].positions[i][j].type === PositionType.Sand) {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Water);
+                  }
+                } else {
+                  if (random < 0.3) {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Water);
+                  } else if (random < 0.7) {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Sand);
+                  } else {
+                    modifyMapElement(mapLayer.value[k].positions[i][j], PositionType.Normal);
+                  }
+                }
+              }
             }
           }
         }
@@ -297,7 +377,7 @@ function cellColorHandler(type: CellType) {
     case CellType.NormalParasite:
       return 'bg-green-300';
     case CellType.WaterParasite:
-      return 'bg-blue-300';
+      return 'bg-blue-300'; 
     case CellType.SandParasite:
       return 'bg-yellow-300';
     case CellType.BigPredator:
@@ -319,6 +399,7 @@ const selectedCell: Ref<TPosition> = ref({
     y: 0,
     type: CellType.DeadCell,
     age: 0,
+    resetAge: () => {},
     neighbourStatus: (iteration: number) => {
       return {
         neighbours: [],
@@ -361,15 +442,18 @@ const isPlaying = ref(false);
 
 function startGame() {
   isPlaying.value = true;
-  CalculateEvolution();
   currentIteration.value = 0;
-  interval = setInterval(() => {
+  interval = setInterval(async () => {
     if (currentIteration.value < iterations.value - 1) {
       currentIteration.value++;
+      if (currentIteration.value % 10 === 0) {
+        currentWeather.value = weatherData.value[Math.floor(currentIteration.value / 10)];
+      }
     } else {
       isPlaying.value = false;
       clearInterval(interval);
       currentIteration.value = 0;
+      currentWeather.value = WeatherType.Normal;
     }
   }, duration.value *1000);
 }
@@ -381,6 +465,14 @@ function stopGame() {
 }
 
 function CalculateEvolution() {
+  isLoading.value = true;
+  for (let i = 0; i < iterations.value - 1; i++) {
+    for (let x = 0; x < xAxis.value; x++) {
+      for (let y = 0; y < yAxis.value; y++) {
+        mapLayer.value[i].positions[x][y].content.resetAge();
+      }
+    }
+  }
   for (let i = 0; i < iterations.value - 1; i++) {
     for (let x = 0; x < xAxis.value; x++) {
       for (let y = 0; y < yAxis.value; y++) {
@@ -537,20 +629,32 @@ function CalculateEvolution() {
             } else if (currentCell.content.type === CellType.BigPredator) {
               if (neighbours.predatorCount > 1) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-              } else if (i > 1 &&currentCell.content.type === CellType.BigPredator && currentCell.content.age >= 2) {
+              } else if (i > 1 
+                && currentCell.content.type === CellType.BigPredator 
+                && mapLayer.value[i - 1].positions[x][y].content.type === CellType.BigPredator
+                && mapLayer.value[i - 2].positions[x][y].content.type === CellType.BigPredator
+                ) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
               }
-            } else if (currentCell.content.type === CellType.NormalParasite || currentCell.content.type === CellType.WaterParasite || currentCell.content.type === CellType.SandParasite) {
-              if (neighbours.neighborCount !== 2) {
-                modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-              } else if (i > 0 
-              && (
+            } else if (
                 currentCell.content.type === CellType.NormalParasite 
                 || currentCell.content.type === CellType.WaterParasite 
                 || currentCell.content.type === CellType.SandParasite
-                ) && currentCell.content.age > 0
+              ) {
+              if (neighbours.neighborCount !== 2) {
+                modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
+              } else if (i > 0 
+                && (
+                  currentCell.content.type === CellType.NormalParasite 
+                  || currentCell.content.type === CellType.WaterParasite 
+                  || currentCell.content.type === CellType.SandParasite
+                ) && (
+                  mapLayer.value[i - 1].positions[x][y].content.type === CellType.NormalParasite
+                  || mapLayer.value[i - 1].positions[x][y].content.type === CellType.WaterParasite
+                  || mapLayer.value[i - 1].positions[x][y].content.type === CellType.SandParasite
+                  )
                 ) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
               } else {
@@ -559,7 +663,10 @@ function CalculateEvolution() {
             } else if (currentCell.content.type === CellType.BigCell) {
               if (neighbours.neighborCount !== 2) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
-              } else if (i > 1 && currentCell.content.age > 1) {
+              } else if (
+                i > 1 
+                && mapLayer.value[i - 1].positions[x][y].content.type === CellType.BigCell
+                ) {
                 modifyCell(mapLayer.value[i + 1].positions[x][y].content, CellType.DeadCell);
               } else {
                 moveToNextIteration(currentCell, mapLayer.value[i + 1].positions[x][y]);
@@ -630,12 +737,44 @@ function CalculateEvolution() {
       }
     }
   }
+  isLoading.value = false;
 }
 
+onMounted(() => {
+  let hrElement;
+  let counter = 100;
+  for (let i = 0; i < counter; i++) {
+    hrElement = document.createElement('hr');
+    hrElement.style.left = Math.floor(Math.random() * window.innerWidth) + 'px';
+    hrElement.style.animationDuration = 0.2 + Math.random() * 0.3 + 's';
+    hrElement.style.animationDelay = Math.random() * 5 + 's';
+    const rainElement = document.getElementById('rain');
+    if (rainElement !== null) {
+      rainElement.appendChild(hrElement);
+    } else {
+      alert('rain element not found');
+    }
+  }
+});
 </script>
 
 <template>
-  <div class="bg-gray-50 h-screen overflow-hidden flex flex-col">
+  <div id="rain" v-show="currentWeather === WeatherType.Rain"></div>
+  <div id="sun" v-show="currentWeather === WeatherType.Sunlight">
+    <div class="ray_box">
+        <div class="ray ray1"></div>
+        <div class="ray ray2"></div>
+        <div class="ray ray3"></div>
+        <div class="ray ray4"></div>
+        <div class="ray ray5"></div>
+        <div class="ray ray6"></div>
+        <div class="ray ray7"></div>
+        <div class="ray ray8"></div>
+        <div class="ray ray9"></div>
+        <div class="ray ray10"></div>
+    </div>
+  </div>
+  <div class="h-screen overflow-hidden flex flex-col" :class="{'bg-blue-50': currentWeather === WeatherType.Normal, 'bg-gray-100': currentWeather === WeatherType.Rain, 'bg-yellow-100': currentWeather === WeatherType.Sunlight}">
     <div class="z-50 p-2 flex items-center shadow gap-3">
       <label>
         <span>行數</span>
@@ -662,18 +801,20 @@ function CalculateEvolution() {
         <span>隨機細胞</span>
         <input type="checkbox" v-model="randomCell">
       </label>
-      <Button label="開始遊戲" @click="startGame" v-show="!isPlaying && mapLayer[currentIteration] != undefined && isLoading != true" />
-      <Button label="停止遊戲" @click="stopGame" v-show="isPlaying" />
+      <label v-show="isPlaying">迭代次數：{{ currentIteration + 1 }}</label>
+      <Button label="計算" @click="CalculateEvolution" v-show="!isPlaying && mapLayer[currentIteration] != undefined && isLoading != true" />
+      <Button label="開始" @click="startGame" v-show="!isPlaying && mapLayer[currentIteration] != undefined && isLoading != true" />
+      <Button label="停止" @click="stopGame" v-show="isPlaying" />
     </div>
     <div class="flex-grow overflow-hidden h-full p-5">
       <div class="h-full overflow-auto">
         <table v-if="mapLayer[currentIteration] != undefined && isLoading != true" class="m-auto">
           <tr v-for="(row, index) in mapLayer[currentIteration].positions" :key="index">
             <template v-for="(item, index) in row" :key="index">
-              <td :style="{'width': elementSize, 'height': elementSize}" :class="['border p-1 cursor-pointer', cellBackgroundHandler(item.type)]" @click="cellHandler(item)">
-                <div :class="['w-full h-full rounded-full bg-opacity-80 p-auto text-center', cellColorHandler(item.content.type)]">
-                  <div class="text-center text-xs inline-block" v-if="item.content.type === CellType.BigPredator || item.content.type === CellType.Predator">掠</div>
-                  <div class="text-center text-xs inline-block" v-if="item.content.type === CellType.NormalParasite || item.content.type === CellType.WaterParasite || item.content.type === CellType.SandParasite">寄</div>
+              <td :style="{'width': elementSize, 'height': elementSize}" :class="['border cursor-pointer leading-none', cellBackgroundHandler(item.type)]" @click="cellHandler(item)">
+                <div :class="['w-full h-full rounded-full bg-opacity-80 p-auto text-center', cellColorHandler(item.content.type), item.content.type !== CellType.DeadCell ? 'shadow' : '']">
+                  <div class="text-center inline-block" style="font-size: 8pt;" v-if="item.content.type === CellType.BigPredator || item.content.type === CellType.Predator">掠</div>
+                  <div class="text-center inline-block" style="font-size: 8pt;" v-if="item.content.type === CellType.NormalParasite || item.content.type === CellType.WaterParasite || item.content.type === CellType.SandParasite">寄</div>
                 </div>
               </td>
             </template>
@@ -695,11 +836,144 @@ function CalculateEvolution() {
 </Dialog>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 label {
   @apply flex items-center gap-2;
   span {
     @apply font-semibold text-xl;
   }
+}
+hr{
+  width: 50px;
+  border-color: transparent;
+  border-right-color: black;
+  border-right-width: 50px;
+  position: absolute;
+  bottom: 100%;
+  transform-origin: 100% 50%;
+  animation-name: rain;
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes rain {
+  from {
+    transform: rotate(90deg) translateX(0);
+  }
+  to {
+    transform: rotate(90deg) translateX(95vh);
+  }
+}
+#sun { 
+  position: absolute;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;
+	margin: auto;  
+	width:70px;
+	height:70px;
+	border-radius:50%;	
+	background:white;
+	opacity:0.8;			
+	box-shadow: 0px 0px 40px 15px white;
+  z-index: 10000;
+}
+
+.ray_box {
+  position: absolute;
+  margin: auto;
+	top:0px;
+	left:0;
+	right:0;
+	bottom:0;	
+  width:70px;  
+  -webkit-animation: ray_anim 120s linear infinite;
+  animation: ray_anim 120s linear infinite;
+}
+.ray {  
+    background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%);
+		background: linear-gradient(top, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%); 
+    margin-left:10px;
+    border-radius:80% 80% 0 0;
+    position:absolute;
+    opacity:0.1;
+}
+
+.ray1 {    
+    height:170px;
+    width:30px;
+   -webkit-transform: rotate(180deg);
+    top:-175px;
+    left: 15px;
+}
+.ray2 {
+    height:100px;
+    width:8px;
+   -webkit-transform: rotate(220deg);
+    top:-90px;
+    left: 75px;
+}
+.ray3 {
+    height:170px;
+    width:50px;
+   -webkit-transform: rotate(250deg);
+    top:-80px;
+    left: 100px;
+}
+.ray4 {
+    height:120px;
+    width:14px;
+   -webkit-transform: rotate(305deg);
+    top:30px;
+    left: 100px;
+}
+.ray5 {
+    height:140px;
+    width:30px;
+   -webkit-transform: rotate(-15deg);
+    top:60px;
+    left: 40px;
+}
+.ray6 {
+    height:90px;
+    width:50px;
+   -webkit-transform: rotate(30deg);
+    top:60px;
+    left: -40px;
+}
+.ray7 {
+    height:180px;
+    width:10px;
+   -webkit-transform: rotate(70deg);
+    top:-35px;
+    left: -40px;
+}
+.ray8 {
+    height:120px;
+    width:30px;
+   -webkit-transform: rotate(100deg);
+    top:-45px;
+    left:-90px;
+}
+.ray9 {
+    height:80px;
+    width:10px;
+   -webkit-transform: rotate(120deg);
+    top:-65px;
+    left:-60px;
+}
+.ray10 {
+    height:190px;
+    width:23px;
+   -webkit-transform: rotate(150deg);
+    top:-185px;
+    left: -60px;
+}
+
+
+@-webkit-keyframes ray_anim { 
+		0% { -webkit-transform: rotate(0deg); transform: rotate(0deg);}    
+    100% { -webkit-transform: rotate(360deg); transform: rotate(360deg);}
 }
 </style>
